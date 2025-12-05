@@ -8,9 +8,9 @@ import (
 )
 
 // Print displays the task information.
-func Print(current *scheduler.TaskEvent, next *scheduler.TaskEvent, asJSON bool, showTime bool, noTaskText string) error {
+func Print(previous *scheduler.TaskEvent, current *scheduler.TaskEvent, next *scheduler.TaskEvent, asJSON bool, showTime bool, noTaskText string) error {
 	if asJSON {
-		return printJSON(current, next)
+		return printJSON(previous, current, next)
 	}
 	// For natural language, we only print one based on flags (logic handled in main)
 	// But wait, main calls this with either current OR next if not JSON.
@@ -28,14 +28,16 @@ func Print(current *scheduler.TaskEvent, next *scheduler.TaskEvent, asJSON bool,
 }
 
 type jsonOutput struct {
-	Current *scheduler.TaskEvent `json:"current"`
-	Next    *scheduler.TaskEvent `json:"next"`
+	Previous *scheduler.TaskEvent `json:"previous"`
+	Current  *scheduler.TaskEvent `json:"current"`
+	Next     *scheduler.TaskEvent `json:"next"`
 }
 
-func printJSON(current *scheduler.TaskEvent, next *scheduler.TaskEvent) error {
+func printJSON(previous *scheduler.TaskEvent, current *scheduler.TaskEvent, next *scheduler.TaskEvent) error {
 	out := jsonOutput{
-		Current: current,
-		Next:    next,
+		Previous: previous,
+		Current:  current,
+		Next:     next,
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")

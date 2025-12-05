@@ -83,7 +83,7 @@ func run(cmd *cobra.Command, args []string) error {
 
 	// 5. Output
 	now := time.Now()
-	var currentTask, nextTaskEvent *scheduler.TaskEvent
+	var currentTask, nextTaskEvent, previousTask *scheduler.TaskEvent
 
 	// If JSON, we want both
 	if jsonFmt {
@@ -92,6 +92,10 @@ func run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		nextTaskEvent, err = sched.GetNextTask(now)
+		if err != nil {
+			return err
+		}
+		previousTask, err = sched.GetPreviousTask(now)
 		if err != nil {
 			return err
 		}
@@ -108,7 +112,7 @@ func run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return output.Print(currentTask, nextTaskEvent, jsonFmt, showTime, noTaskText)
+	return output.Print(previousTask, currentTask, nextTaskEvent, jsonFmt, showTime, noTaskText)
 }
 
 func runWatch(sched *scheduler.Scheduler) error {
@@ -116,13 +120,16 @@ func runWatch(sched *scheduler.Scheduler) error {
 
 	for {
 		now := time.Now()
-		var currentTask, nextTaskEvent *scheduler.TaskEvent
+		var currentTask, nextTaskEvent, previousTask *scheduler.TaskEvent
 		var err error
 
 		if jsonFmt {
 			currentTask, err = sched.GetCurrentTask(now)
 			if err == nil {
 				nextTaskEvent, err = sched.GetNextTask(now)
+				if err == nil {
+					previousTask, err = sched.GetPreviousTask(now)
+				}
 			}
 		} else {
 			if nextTask {
@@ -135,7 +142,7 @@ func runWatch(sched *scheduler.Scheduler) error {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		} else {
-			output.Print(currentTask, nextTaskEvent, jsonFmt, showTime, noTaskText)
+			output.Print(previousTask, currentTask, nextTaskEvent, jsonFmt, showTime, noTaskText)
 		}
 
 		<-ticker.C

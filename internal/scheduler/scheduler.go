@@ -103,6 +103,52 @@ func (s *Scheduler) GetNextTask(now time.Time) (*TaskEvent, error) {
 	return nil, nil
 }
 
+// GetPreviousTask returns the most recently finished task.
+func (s *Scheduler) GetPreviousTask(now time.Time) (*TaskEvent, error) {
+	// Search backwards from 'now'
+	maxDays := s.cfg.CycleDays * 2
+	if maxDays < 7 {
+		maxDays = 7
+	}
+
+	for i := 0; i < maxDays; i++ {
+		checkDate := now.AddDate(0, 0, -i)
+		dayID, err := s.getCycleDayID(checkDate)
+		if err != nil {
+			return nil, err
+		}
+
+		tasks := s.getTasksForDay(dayID)
+
+		var dayEvents []TaskEvent
+		for _, t := range tasks {
+			start, end, err := s.parseTaskTimes(checkDate, t)
+			if err != nil {
+				return nil, fmt.Errorf("invalid time in config: %w", err)
+			}
+			dayEvents = append(dayEvents, TaskEvent{
+				Name:      t.Name,
+				StartTime: start,
+				EndTime:   end,
+			})
+		}
+
+		// Sort by EndTime descending to find the latest one
+		sort.Slice(dayEvents, func(j, k int) bool {
+			return dayEvents[j].EndTime.After(dayEvents[k].EndTime)
+		})
+
+		for _, event := range dayEvents {
+			// We want the task with the latest EndTime that is <= now.
+			if !event.EndTime.After(now) {
+				return &event, nil
+			}
+		}
+	}
+
+	return nil, nil
+}
+
 // getCycleDayID calculates the 0-indexed day ID in the cycle for a given date.
 func (s *Scheduler) getCycleDayID(date time.Time) (int, error) {
 	// If standard 7-day cycle and no anchor, use weekday
