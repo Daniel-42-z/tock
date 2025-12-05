@@ -21,7 +21,6 @@ var (
 	watchMode   bool
 	noTaskText  string
 	lookahead   time.Duration
-	notify      bool
 	notifyAhead time.Duration
 )
 
@@ -40,8 +39,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&watchMode, "watch", "w", false, "continuous mode (watch for changes)")
 	rootCmd.Flags().StringVar(&noTaskText, "no-task-text", "No task currently.", "text to display when no task is found")
 	rootCmd.Flags().DurationVarP(&lookahead, "lookahead", "l", 0, "lookahead duration for watch mode (affects output time)")
-	rootCmd.Flags().BoolVar(&notify, "notify", false, "enable desktop notifications")
-	rootCmd.Flags().DurationVar(&notifyAhead, "notify-ahead", 0, "how long before a task starts to send a notification")
+	rootCmd.Flags().DurationVar(&notifyAhead, "notify-ahead", 0, "enable notifications with this lookahead duration (use 0s for immediate)")
 }
 
 func main() {
@@ -51,8 +49,10 @@ func main() {
 }
 
 func run(cmd *cobra.Command, args []string) error {
-	if notify && !watchMode {
-		return fmt.Errorf("--notify can only be used with --watch (-w)")
+	notifyEnabled := cmd.Flags().Changed("notify-ahead")
+
+	if notifyEnabled && !watchMode {
+		return fmt.Errorf("--notify-ahead can only be used with --watch (-w)")
 	}
 
 	var err error
@@ -78,7 +78,7 @@ func run(cmd *cobra.Command, args []string) error {
 
 	// 4. Handle Watch Mode
 	if watchMode {
-		return runWatch(sched)
+		return runWatch(sched, notifyEnabled)
 	}
 
 	// 5. Output
@@ -115,9 +115,9 @@ func run(cmd *cobra.Command, args []string) error {
 	return output.Print(previousTask, currentTask, nextTaskEvent, jsonFmt, showTime, noTaskText)
 }
 
-func runWatch(sched *scheduler.Scheduler) error {
+func runWatch(sched *scheduler.Scheduler, notifyEnabled bool) error {
 	var notif *notifier.Notifier
-	if notify {
+	if notifyEnabled {
 		notif = notifier.New()
 	}
 
@@ -155,21 +155,11 @@ func runWatch(sched *scheduler.Scheduler) error {
 		}
 
 		// --- Notification Logic ---
-		if notify && notif != nil && realNext != nil {
+		if notifyEnabled && notif != nil && realNext != nil {
 			// Check if we should notify about the next task
 			// We notify if:
 			// 1. We haven't notified about this specific task instance yet
 			// 2. We are within the notify-ahead window relative to the *actual* start time (not lookahead time)
-			//    Wait, the user wants "notifications a few minutes before each task starts".
-			//    So we should check `realNext.StartTime` against `now` (actual time).
-			//    BUT, `realNext` was fetched using `effectiveNow`.
-			//    If `lookahead` is 0, `effectiveNow` == `now`.
-			//    If `lookahead` is set (e.g. 5m), `realNext` might be further in the future or already started in "lookahead time".
-			//    The requirement says: "serve both the notifications a few minutes before each task starts and a quickshell widget UI displaying the tasks (through its JSON output) without lookahead".
-			//    This implies the process might be running with `lookahead=0` for the UI, but wants notifications ahead of time?
-			//    OR the user runs TWO instances?
-			//    "one example use case is to have 1 tock background service running, and have it serve both the notifications a few minutes before each task starts and a quickshell widget UI displaying the tasks (through its JSON output) without lookahead"
-			//    This means `lookahead` (the existing flag) should be 0 (for the UI), but we want notifications `notifyAhead` before the task.
 
 			// So we use `now` to check against `realNext.StartTime`.
 			// `realNext` is the next task relative to `effectiveNow`. If `lookahead` is 0, it's the next task relative to now.
@@ -227,7 +217,7 @@ func runWatch(sched *scheduler.Scheduler) error {
 			targetTimes = append(targetTimes, realNext.StartTime.Add(-lookahead))
 
 			// Wake up for notification
-			if notify && notif != nil {
+			if notifyEnabled && notif != nil {
 				// We want to wake up exactly at triggerTime
 				triggerTime := realNext.StartTime.Add(-notifyAhead)
 				// Only if it's in the future
