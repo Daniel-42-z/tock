@@ -116,35 +116,98 @@ func run(cmd *cobra.Command, args []string) error {
 }
 
 func runWatch(sched *scheduler.Scheduler) error {
-	ticker := time.NewTicker(30 * time.Second)
-
 	for {
 		now := time.Now()
-		var currentTask, nextTaskEvent, previousTask *scheduler.TaskEvent
-		var err error
+
+		// Always fetch current and next for scheduling purposes
+		realCurrent, err := sched.GetCurrentTask(now)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error getting current task: %v\n", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		realNext, err := sched.GetNextTask(now)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error getting next task: %v\n", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		var realPrevious *scheduler.TaskEvent
+		if jsonFmt {
+			realPrevious, err = sched.GetPreviousTask(now)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error getting previous task: %v\n", err)
+				time.Sleep(5 * time.Second)
+				continue
+			}
+		}
+
+		// Prepare output
+		var outCurrent, outNext, outPrevious *scheduler.TaskEvent
 
 		if jsonFmt {
-			currentTask, err = sched.GetCurrentTask(now)
-			if err == nil {
-				nextTaskEvent, err = sched.GetNextTask(now)
-				if err == nil {
-					previousTask, err = sched.GetPreviousTask(now)
+			outCurrent = realCurrent
+			outNext = realNext
+			outPrevious = realPrevious
+		} else {
+			if nextTask {
+				outCurrent = realNext
+			} else {
+				outCurrent = realCurrent
+			}
+		}
+
+		output.Print(outPrevious, outCurrent, outNext, jsonFmt, showTime, noTaskText)
+
+		// Calculate sleep duration
+		targetTime := time.Time{}
+
+		if realCurrent != nil {
+			targetTime = realCurrent.EndTime
+		}
+
+		if realNext != nil {
+			if targetTime.IsZero() || realNext.StartTime.Before(targetTime) {
+				targetTime = realNext.StartTime
+			}
+		}
+
+		var waitDuration time.Duration
+		if targetTime.IsZero() {
+			// No known future events. Check back in a minute.
+			waitDuration = 1 * time.Minute
+		} else {
+			waitDuration = time.Until(targetTime)
+		}
+
+		// Add a small buffer to ensure we land in the next state
+		if waitDuration < 0 {
+			waitDuration = 0
+		}
+
+		// Sleep
+		if waitDuration > 0 {
+			time.Sleep(waitDuration + 50*time.Millisecond)
+
+			// Ensure we actually reached the target time (handle spurious wakeups)
+			// Only if we had a valid target time
+			if !targetTime.IsZero() {
+				for {
+					now = time.Now()
+					if !now.Before(targetTime) {
+						break
+					}
+					remaining := targetTime.Sub(now)
+					if remaining > 0 {
+						time.Sleep(remaining + 50*time.Millisecond)
+					}
 				}
 			}
 		} else {
-			if nextTask {
-				currentTask, err = sched.GetNextTask(now)
-			} else {
-				currentTask, err = sched.GetCurrentTask(now)
-			}
+			// If we are already past target, just yield briefly to avoid tight loop in weird cases
+			time.Sleep(50 * time.Millisecond)
 		}
-
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		} else {
-			output.Print(previousTask, currentTask, nextTaskEvent, jsonFmt, showTime, noTaskText)
-		}
-
-		<-ticker.C
 	}
 }
