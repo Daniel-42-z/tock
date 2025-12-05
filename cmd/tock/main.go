@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"tock/internal/config"
+	"tock/internal/notifier"
 	"tock/internal/output"
 	"tock/internal/scheduler"
 
@@ -13,13 +14,15 @@ import (
 )
 
 var (
-	cfgFile    string
-	jsonFmt    bool
-	showTime   bool
-	nextTask   bool
-	watchMode  bool
-	noTaskText string
-	lookahead  time.Duration
+	cfgFile     string
+	jsonFmt     bool
+	showTime    bool
+	nextTask    bool
+	watchMode   bool
+	noTaskText  string
+	lookahead   time.Duration
+	notify      bool
+	notifyAhead time.Duration
 )
 
 var rootCmd = &cobra.Command{
@@ -36,7 +39,9 @@ func init() {
 	rootCmd.Flags().BoolVarP(&nextTask, "next", "n", false, "show next task instead of current")
 	rootCmd.Flags().BoolVarP(&watchMode, "watch", "w", false, "continuous mode (watch for changes)")
 	rootCmd.Flags().StringVar(&noTaskText, "no-task-text", "No task currently.", "text to display when no task is found")
-	rootCmd.Flags().DurationVarP(&lookahead, "lookahead", "l", 0, "lookahead duration for watch mode")
+	rootCmd.Flags().DurationVarP(&lookahead, "lookahead", "l", 0, "lookahead duration for watch mode (affects output time)")
+	rootCmd.Flags().BoolVar(&notify, "notify", false, "enable desktop notifications")
+	rootCmd.Flags().DurationVar(&notifyAhead, "notify-ahead", 0, "how long before a task starts to send a notification")
 }
 
 func main() {
@@ -46,6 +51,10 @@ func main() {
 }
 
 func run(cmd *cobra.Command, args []string) error {
+	if notify && !watchMode {
+		return fmt.Errorf("--notify can only be used with --watch (-w)")
+	}
+
 	var err error
 	// 1. Resolve config file path
 	if cfgFile == "" {
@@ -107,6 +116,15 @@ func run(cmd *cobra.Command, args []string) error {
 }
 
 func runWatch(sched *scheduler.Scheduler) error {
+	var notif *notifier.Notifier
+	if notify {
+		notif = notifier.New()
+	}
+
+	// Keep track of the last task we notified about to avoid spamming
+	// We use a signature "Name|StartTime"
+	var lastNotifiedSig string
+
 	for {
 		now := time.Now()
 		effectiveNow := now.Add(lookahead)
@@ -136,7 +154,46 @@ func runWatch(sched *scheduler.Scheduler) error {
 			}
 		}
 
-		// Prepare output
+		// --- Notification Logic ---
+		if notify && notif != nil && realNext != nil {
+			// Check if we should notify about the next task
+			// We notify if:
+			// 1. We haven't notified about this specific task instance yet
+			// 2. We are within the notify-ahead window relative to the *actual* start time (not lookahead time)
+			//    Wait, the user wants "notifications a few minutes before each task starts".
+			//    So we should check `realNext.StartTime` against `now` (actual time).
+			//    BUT, `realNext` was fetched using `effectiveNow`.
+			//    If `lookahead` is 0, `effectiveNow` == `now`.
+			//    If `lookahead` is set (e.g. 5m), `realNext` might be further in the future or already started in "lookahead time".
+			//    The requirement says: "serve both the notifications a few minutes before each task starts and a quickshell widget UI displaying the tasks (through its JSON output) without lookahead".
+			//    This implies the process might be running with `lookahead=0` for the UI, but wants notifications ahead of time?
+			//    OR the user runs TWO instances?
+			//    "one example use case is to have 1 tock background service running, and have it serve both the notifications a few minutes before each task starts and a quickshell widget UI displaying the tasks (through its JSON output) without lookahead"
+			//    This means `lookahead` (the existing flag) should be 0 (for the UI), but we want notifications `notifyAhead` before the task.
+
+			// So we use `now` to check against `realNext.StartTime`.
+			// `realNext` is the next task relative to `effectiveNow`. If `lookahead` is 0, it's the next task relative to now.
+
+			triggerTime := realNext.StartTime.Add(-notifyAhead)
+			sig := fmt.Sprintf("%s|%s", realNext.Name, realNext.StartTime.Format(time.RFC3339))
+
+			if sig != lastNotifiedSig {
+				// If we are past the trigger time, send notification
+				if !now.Before(triggerTime) {
+					// Send notification
+					msg := fmt.Sprintf("Starts at %s", realNext.StartTime.Format("15:04"))
+					if notifyAhead > 0 {
+						msg += fmt.Sprintf(" (in %s)", notifyAhead)
+					}
+					if err := notif.Send(realNext.Name, msg); err != nil {
+						fmt.Fprintf(os.Stderr, "Failed to send notification: %v\n", err)
+					}
+					lastNotifiedSig = sig
+				}
+			}
+		}
+
+		// --- Output Logic ---
 		var outCurrent, outNext, outPrevious *scheduler.TaskEvent
 
 		if jsonFmt {
@@ -153,25 +210,49 @@ func runWatch(sched *scheduler.Scheduler) error {
 
 		output.Print(outPrevious, outCurrent, outNext, jsonFmt, showTime, noTaskText)
 
-		// Calculate sleep duration
-		targetTime := time.Time{}
+		// --- Sleep Calculation ---
+		// We need to wake up for:
+		// 1. Current task ending (status update)
+		// 2. Next task starting (status update)
+		// 3. Notification trigger time (if enabled)
+
+		targetTimes := []time.Time{}
 
 		if realCurrent != nil {
-			targetTime = realCurrent.EndTime
+			targetTimes = append(targetTimes, realCurrent.EndTime.Add(-lookahead))
 		}
 
 		if realNext != nil {
-			if targetTime.IsZero() || realNext.StartTime.Before(targetTime) {
-				targetTime = realNext.StartTime
+			// Wake up when next task starts (status update)
+			targetTimes = append(targetTimes, realNext.StartTime.Add(-lookahead))
+
+			// Wake up for notification
+			if notify && notif != nil {
+				// We want to wake up exactly at triggerTime
+				triggerTime := realNext.StartTime.Add(-notifyAhead)
+				// Only if it's in the future
+				if triggerTime.After(now) {
+					targetTimes = append(targetTimes, triggerTime)
+				}
+			}
+		}
+
+		// Find the earliest target time that is in the future
+		var earliestTarget time.Time
+		for _, t := range targetTimes {
+			if t.After(now) {
+				if earliestTarget.IsZero() || t.Before(earliestTarget) {
+					earliestTarget = t
+				}
 			}
 		}
 
 		var waitDuration time.Duration
-		if targetTime.IsZero() {
+		if earliestTarget.IsZero() {
 			// No known future events. Check back in a minute.
 			waitDuration = 1 * time.Minute
 		} else {
-			waitDuration = targetTime.Sub(effectiveNow)
+			waitDuration = earliestTarget.Sub(now)
 		}
 
 		// Add a small buffer to ensure we land in the next state
@@ -182,21 +263,6 @@ func runWatch(sched *scheduler.Scheduler) error {
 		// Sleep
 		if waitDuration > 0 {
 			time.Sleep(waitDuration + 50*time.Millisecond)
-
-			// Ensure we actually reached the target time (handle spurious wakeups)
-			// Only if we had a valid target time
-			if !targetTime.IsZero() {
-				for {
-					now = time.Now()
-					if !now.Add(lookahead).Before(targetTime) {
-						break
-					}
-					remaining := targetTime.Sub(now.Add(lookahead))
-					if remaining > 0 {
-						time.Sleep(remaining + 50*time.Millisecond)
-					}
-				}
-			}
 		} else {
 			// If we are already past target, just yield briefly to avoid tight loop in weird cases
 			time.Sleep(50 * time.Millisecond)
