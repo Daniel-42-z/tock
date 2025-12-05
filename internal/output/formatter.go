@@ -12,17 +12,8 @@ func Print(previous *scheduler.TaskEvent, current *scheduler.TaskEvent, next *sc
 	if asJSON {
 		return printJSON(previous, current, next)
 	}
-	// For natural language, we only print one based on flags (logic handled in main)
-	// But wait, main calls this with either current OR next if not JSON.
-	// If JSON, we want both.
-	// Let's adjust the signature to take both, and main decides what to pass.
-	// Actually, for natural language, we might still want to support printing just one.
-	// Let's assume if asJSON is false, we print 'current' (which might be the 'next' task if the flag was set? No, main logic needs change).
-
-	// If we are in natural mode, we print 'current' if it's not nil, or handle no task.
-	// But main logic was: if --next, get next. if not, get current.
-	// Now user says: -j should output BOTH.
-	// So main needs to fetch BOTH if -j is set.
+	// JSON mode outputs all three tasks (previous, current, next).
+	// Natural language mode outputs only the 'current' task (which main sets based on flags).
 
 	return printNatural(current, showTime, noTaskText)
 }
