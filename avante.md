@@ -1,1 +1,0 @@
-- Build the project in the build/ directory
