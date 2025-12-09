@@ -27,22 +27,25 @@ type jsonOutput struct {
 	Previous *scheduler.TaskEvent `json:"previous"`
 	Current  *scheduler.TaskEvent `json:"current"`
 	Next     *scheduler.TaskEvent `json:"next"`
-	Tasks    []ExtendedTaskEvent  `json:"tasks"`
+	Tasks    []ExtendedTaskEvent  `json:"tasks,omitempty"`
 }
 
 func printJSON(previous *scheduler.TaskEvent, current *scheduler.TaskEvent, next *scheduler.TaskEvent, dayTasks []scheduler.TaskEvent) error {
-	extendedTasks := make([]ExtendedTaskEvent, len(dayTasks))
-	for i, t := range dayTasks {
-		isCurrent := false
-		if current != nil {
-			// Compare exact times and name to identify the current task
-			if t.Name == current.Name && t.StartTime.Equal(current.StartTime) && t.EndTime.Equal(current.EndTime) {
-				isCurrent = true
+	var extendedTasks []ExtendedTaskEvent
+	if len(dayTasks) > 0 {
+		extendedTasks = make([]ExtendedTaskEvent, len(dayTasks))
+		for i, t := range dayTasks {
+			isCurrent := false
+			if current != nil {
+				// Compare exact times and name to identify the current task
+				if t.Name == current.Name && t.StartTime.Equal(current.StartTime) && t.EndTime.Equal(current.EndTime) {
+					isCurrent = true
+				}
 			}
-		}
-		extendedTasks[i] = ExtendedTaskEvent{
-			TaskEvent: t,
-			IsCurrent: isCurrent,
+			extendedTasks[i] = ExtendedTaskEvent{
+				TaskEvent: t,
+				IsCurrent: isCurrent,
+			}
 		}
 	}
 

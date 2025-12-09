@@ -17,6 +17,7 @@ import (
 var (
 	cfgFile     string
 	jsonFmt     bool
+	jsonAll     bool
 	showTime    bool
 	nextTask    bool
 	watchMode   bool
@@ -35,6 +36,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $XDG_CONFIG_HOME/tock/config.toml)")
 	rootCmd.Flags().BoolVarP(&jsonFmt, "json", "j", false, "output in JSON format")
+	rootCmd.Flags().BoolVar(&jsonAll, "all", false, "include all tasks for today in JSON output (only with --json)")
 	rootCmd.Flags().BoolVarP(&showTime, "time", "t", false, "show time ranges in output")
 	rootCmd.Flags().BoolVarP(&nextTask, "next", "n", false, "show next task instead of current")
 	rootCmd.Flags().BoolVarP(&watchMode, "watch", "w", false, "continuous mode (watch for changes)")
@@ -92,7 +94,7 @@ func run(cmd *cobra.Command, args []string) error {
 		var wg sync.WaitGroup
 		var errCurrent, errNext, errPrevious, errDayTasks error
 
-		wg.Add(4)
+		wg.Add(3)
 
 		go func() {
 			defer wg.Done()
@@ -109,10 +111,13 @@ func run(cmd *cobra.Command, args []string) error {
 			previousTask, errPrevious = sched.GetPreviousTask(now)
 		}()
 
-		go func() {
-			defer wg.Done()
-			dayTasks, errDayTasks = sched.GetTasksForDate(now)
-		}()
+		if jsonAll {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				dayTasks, errDayTasks = sched.GetTasksForDate(now)
+			}()
+		}
 
 		wg.Wait()
 
@@ -179,15 +184,18 @@ func runWatch(sched *scheduler.Scheduler, notifyEnabled bool) error {
 		}()
 
 		if jsonFmt {
-			wg.Add(2)
+			wg.Add(1)
 			go func() {
 				defer wg.Done()
 				realPrevious, errPrevious = sched.GetPreviousTask(effectiveNow)
 			}()
-			go func() {
-				defer wg.Done()
-				dayTasks, errDayTasks = sched.GetTasksForDate(effectiveNow)
-			}()
+			if jsonAll {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					dayTasks, errDayTasks = sched.GetTasksForDate(effectiveNow)
+				}()
+			}
 		}
 
 		wg.Wait()
