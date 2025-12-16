@@ -79,7 +79,6 @@ func initialModel(sched *scheduler.Scheduler) model {
 
 	s := table.DefaultStyles()
 	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("240")).
 		BorderBottom(true).
 		Bold(false)
@@ -137,7 +136,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.table.SetWidth(msg.Width - 4)
 		// Leave space for header and footer
-		m.table.SetHeight(msg.Height - 5)
+		m.table.SetHeight(msg.Height - 6)
 	}
 
 	m.table, cmd = m.table.Update(msg)
@@ -173,7 +172,6 @@ func (m *model) refreshTable() {
 
 	s := table.DefaultStyles()
 	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("240")).
 		BorderBottom(true).
 		Bold(false)
@@ -182,7 +180,8 @@ func (m *model) refreshTable() {
 		s.Selected = s.Selected.
 			Foreground(lipgloss.Color("229")).
 			Background(lipgloss.Color("57")).
-			Bold(false)
+			Bold(false).
+			Padding(0)
 		m.table.SetCursor(activeRowIndex)
 	} else {
 		s.Selected = s.Cell
@@ -209,7 +208,7 @@ func (m model) View() string {
 
 	header := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("212")).
+		Foreground(lipgloss.Color("75")).
 		PaddingBottom(1).
 		Render(dateStr)
 
