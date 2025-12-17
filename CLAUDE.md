@@ -1,1 +1,2 @@
-- build the project in the build/ directory
+- Build the project in the `build/` directory
+- Every time the config format changes, update the `sample_config.toml` file to reflect the change
