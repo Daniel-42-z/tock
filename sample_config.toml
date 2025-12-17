@@ -1,74 +1,37 @@
-# ==============================================================================
-# Tock Configuration File
-# ==============================================================================
-# This file supports two modes:
-# 1. CSV Mode: Points to an external CSV file (simplest for weekly schedules).
-# 2. Native TOML Mode: Defines the schedule directly here (best for custom cycles).
-
-# ------------------------------------------------------------------------------
-# OPTION 1: CSV MODE (Recommended for standard weekly schedules)
-# ------------------------------------------------------------------------------
-# If "csv_path" is set, Tock will ignore the rest of this file and load tasks
-# from the CSV. Comment this line out to use Option 2.
-#
-# The path can be absolute or relative to this config file.
-# ~ is expanded to your home directory.
-
+# Path to a CSV file for tasks. If set, Tock ignores native TOML schedule.
+# Can be absolute or relative to this config file. '~' expands to home directory.
 # csv_path = "~/Documents/timetables/weekly_schedule.csv"
 
-
-# ------------------------------------------------------------------------------
-# OPTION 2: NATIVE TOML MODE (Complex/Custom Cycles)
-# ------------------------------------------------------------------------------
-# Use this section if you want to define your schedule directly in this file,
-# or if you have a non-standard cycle (e.g., a 6-day school cycle).
-
-# The length of your cycle in days.
-# Default is 7.
+# Number of days in your cycle. Default is 7 for a standard week.
 cycle_days = 7
 
-date_format = "01/02/2006"
-csv_path = "/home/daniel/Documents/School/Timetable.csv"
-# Required ONLY if cycle_days is NOT 7.
-# This date acts as the "Day 0" for your cycle calculations.
+# Date format for displaying dates. (e.g., "01/02/2006" for MM/DD/YYYY)
+date_format = "Jan 02, 2006 Monday"
+
+# Required only if cycle_days is NOT 7. This date acts as "Day 0" for cycle calculations.
 # Format: "YYYY-MM-DD"
-# anchor_date = "2025-01-20" 
+# anchor_date = "2025-01-20"
 
-# --- Defining Days ---
-# Each [[day]] block represents a specific day in the cycle.
-#
-# FOR STANDARD 7-DAY WEEKS (cycle_days = 7, no anchor_date):
-#   id = 0 (Sunday)
-#   id = 1 (Monday)
-#   id = 2 (Tuesday)
-#   id = 3 (Wednesday)
-#   id = 4 (Thursday)
-#   id = 5 (Friday)
-#   id = 6 (Saturday)
-#
-# FOR CUSTOM CYCLES (e.g., cycle_days = 6 with anchor_date):
-#   id = 0 (The anchor date, and every 6th day after)
-#   id = 1 (The day after anchor, etc.)
+# Define tasks for specific days in the cycle.
+# For a 7-day week, id 0=Sunday, 1=Monday, ..., 6=Saturday.
+# For custom cycles, id 0 is the anchor_date, 1 is the day after, etc.
 
-# Example: Monday (Standard Week)
 [[day]]
-id = 1
+id = 1 # Monday
 tasks = [
 	{ name = "Morning Standup", start = "09:00", end = "09:30" },
 	{ name = "Deep Work", start = "09:30", end = "12:00" },
 	{ name = "Lunch Break", start = "12:00", end = "13:00" },
 ]
 
-# Example: Tuesday (Standard Week)
 [[day]]
-id = 2
+id = 2 # Tuesday
 tasks = [
 	{ name = "Team Meeting", start = "10:00", end = "11:00" },
 	{ name = "Project Dev", start = "11:00", end = "15:00" },
 	{ name = "Gym", start = "17:30", end = "18:30" },
 ]
 
-# Example: Friday (Standard Week)
 [[day]]
-id = 5
+id = 5                                                         # Friday
 tasks = [{ name = "Wrap-up", start = "16:00", end = "17:00" }]

@@ -91,7 +91,7 @@ func initialModel(sched *scheduler.Scheduler, cfg *config.Config) model {
 
 	dateFormat := cfg.DateFormat
 	if dateFormat == "" {
-		dateFormat = "2006-01-02 Monday" // Default format: yyyy-mm-dd + day of week (full name)
+		dateFormat = "2006-01-02 Mon" // Default format: yyyy-mm-dd + day of week (full name)
 	}
 
 	m := model{
