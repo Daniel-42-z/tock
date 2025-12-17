@@ -14,8 +14,8 @@ import (
 )
 
 var tuiCmd = &cobra.Command{
-	Use:   "tui",
-	Short: "Run the TUI interface",
+	Use:   "show",
+	Short: "Show interactive timetable",
 	RunE:  runTUI,
 }
 
@@ -184,7 +184,7 @@ func (m *model) refreshTable() {
 			Padding(0)
 		m.table.SetCursor(activeRowIndex)
 	} else {
-		s.Selected = s.Cell
+		s.Selected = s.Cell.Padding(0)
 		m.table.SetCursor(0)
 	}
 	m.table.SetStyles(s)
