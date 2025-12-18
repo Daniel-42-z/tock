@@ -7,7 +7,7 @@ import (
 	"tock/internal/config"
 	"tock/internal/scheduler"
 
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
@@ -17,6 +17,7 @@ const (
 	dateDisplayColor        = lipgloss.Color("40")
 	taskHighlightBackground = lipgloss.Color("22")
 	taskHighlightForeground = lipgloss.Color("7")
+	borderColor             = lipgloss.Color("240")
 )
 
 var tuiCmd = &cobra.Command{
@@ -62,47 +63,27 @@ func runTUI(cmd *cobra.Command, args []string) error {
 
 type model struct {
 	sched       *scheduler.Scheduler
-	table       table.Model
+	viewport    viewport.Model
 	currentDate time.Time
 	err         error
 	width       int
 	height      int
-	dateFormat  string // New field for date format
+	dateFormat  string
 }
 
 type tickMsg time.Time
 
 func initialModel(sched *scheduler.Scheduler, cfg *config.Config) model {
-	columns := []table.Column{
-		{Title: "Time", Width: 15},
-		{Title: "Task", Width: 40},
-	}
-
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithFocused(true),
-		table.WithHeight(20),
-	)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(taskHighlightForeground).
-		Background(taskHighlightBackground).
-		Bold(false)
-	t.SetStyles(s)
+	vp := viewport.New(0, 0)
 
 	dateFormat := cfg.DateFormat
 	if dateFormat == "" {
-		dateFormat = "2006-01-02 Mon" // Default format: yyyy-mm-dd + day of week (full name)
+		dateFormat = "2006-01-02 Mon"
 	}
 
 	m := model{
 		sched:       sched,
-		table:       t,
+		viewport:    vp,
 		currentDate: time.Now(),
 		dateFormat:  dateFormat,
 	}
@@ -135,8 +116,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "right", "l":
 			m.currentDate = m.currentDate.AddDate(0, 0, 1)
 			m.refreshTable()
-		case "up", "k", "down", "j":
-			return m, nil
 		case "t": // Quick jump to today
 			m.currentDate = time.Now()
 			m.refreshTable()
@@ -147,12 +126,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.table.SetWidth(msg.Width - 4)
-		// Leave space for header and footer
-		m.table.SetHeight(msg.Height - 6)
+		m.viewport.Width = msg.Width - 4
+		// Leave space for header and footer (approx 6 lines)
+		m.viewport.Height = msg.Height - 6
+		m.refreshTable()
 	}
 
-	m.table, cmd = m.table.Update(msg)
+	m.viewport, cmd = m.viewport.Update(msg)
 	return m, cmd
 }
 
@@ -164,43 +144,83 @@ func (m *model) refreshTable() {
 	}
 	m.err = nil
 
-	rows := []table.Row{}
 	now := time.Now()
-
-	// Only calculate "active" if we are looking at today
 	isToday := isSameDay(now, m.currentDate)
 
-	activeRowIndex := -1
+	totalWidth := m.viewport.Width
+	if totalWidth == 0 {
+		totalWidth = 80
+	}
 
+	// Calculate columns width
+	timeColWidth := 15
+	taskColWidth := totalWidth - timeColWidth - 4 // Adjust for borders
+	if taskColWidth < 10 {
+		taskColWidth = 10
+	}
+
+	// Base styles
+	baseStyle := lipgloss.NewStyle().Padding(0, 1)
+	headerStyle := baseStyle.Copy().Bold(true).Align(lipgloss.Center)
+
+	// Build Header
+	// Time: Top, Right, Bottom, Left borders
+	// Task: Top, Right, Bottom borders (Left shared)
+	header := lipgloss.JoinHorizontal(lipgloss.Top,
+		headerStyle.Copy().Width(timeColWidth).
+			Border(lipgloss.NormalBorder(), true, true, true, true).
+			BorderForeground(borderColor).
+			Render("Time"),
+		headerStyle.Copy().Width(taskColWidth).
+			Border(lipgloss.NormalBorder(), true, true, true, false).
+			BorderForeground(borderColor).
+			Render("Task"),
+	)
+
+	content := header + "\n"
+
+	// Build Rows
 	for i, task := range tasks {
+		isActive := isToday && now.After(task.StartTime) && now.Before(task.EndTime)
+
 		timeStr := fmt.Sprintf("%s - %s", task.StartTime.Format("15:04"), task.EndTime.Format("15:04"))
-		rows = append(rows, table.Row{timeStr, task.Name})
 
-		if isToday && now.After(task.StartTime) && now.Before(task.EndTime) {
-			activeRowIndex = i
+		// Check if we need to highlight the bottom border (gap between this and next task)
+		bottomBorderColor := borderColor
+		if i < len(tasks)-1 {
+			nextTask := tasks[i+1]
+			// Gap detection
+			if isToday && now.After(task.EndTime) && now.Before(nextTask.StartTime) {
+				bottomBorderColor = taskHighlightBackground
+			}
 		}
+
+		rowStyle := baseStyle.Copy()
+		if isActive {
+			rowStyle = rowStyle.Foreground(taskHighlightForeground).Background(taskHighlightBackground)
+		}
+
+		// Time Cell: Bottom, Right, Left borders
+		tStyle := rowStyle.Copy().Width(timeColWidth).
+			Border(lipgloss.NormalBorder(), false, true, true, true).
+			BorderForeground(borderColor).
+			BorderBottomForeground(bottomBorderColor)
+
+		// Task Cell: Bottom, Right borders
+		tskStyle := rowStyle.Copy().Width(taskColWidth).
+			Border(lipgloss.NormalBorder(), false, true, true, false).
+			BorderForeground(borderColor).
+			BorderBottomForeground(bottomBorderColor)
+
+		row := lipgloss.JoinHorizontal(lipgloss.Top,
+			tStyle.Render(timeStr),
+			tskStyle.Render(task.Name),
+		)
+
+		content += row + "\n"
 	}
 
-	m.table.SetRows(rows)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-
-	if activeRowIndex != -1 {
-		s.Selected = s.Selected.
-			Foreground(taskHighlightForeground).
-			Background(taskHighlightBackground).
-			Bold(false).
-			Padding(0)
-		m.table.SetCursor(activeRowIndex)
-	} else {
-		s.Selected = s.Cell.Padding(0)
-		m.table.SetCursor(0)
-	}
-	m.table.SetStyles(s)
+	m.viewport.SetContent(content)
 }
 
 func isSameDay(t1, t2 time.Time) bool {
@@ -232,7 +252,7 @@ func (m model) View() string {
 	return baseStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Left,
 			header,
-			m.table.View(),
+			m.viewport.View(),
 			"\n  ←/h: prev day • →/l: next day • t: return to today • q: quit",
 		),
 	) + "\n"
