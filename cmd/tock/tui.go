@@ -120,6 +120,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "t": // Quick jump to today
 			m.currentDate = time.Now()
 			m.refreshTable()
+		case "up", "k":
+			m.viewport.ScrollUp(1)
+			return m, nil
+		case "down", "j":
+			m.viewport.ScrollDown(1)
+			return m, nil
 		}
 	case tickMsg:
 		m.refreshTable()
@@ -289,7 +295,7 @@ func (m model) View() string {
 		lipgloss.JoinVertical(lipgloss.Left,
 			header,
 			m.viewport.View(),
-			"\n  ←/h: prev day • →/l: next day • t: return to today • q: quit",
+			"\n  ←/h: prev day • →/l: next day • ↑/k/u: up • ↓/j/d: down • t: today • q: quit",
 		),
 	) + "\n"
 }
