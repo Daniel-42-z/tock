@@ -163,16 +163,34 @@ func (m *model) refreshTable() {
 	baseStyle := lipgloss.NewStyle().Padding(0, 1)
 	headerStyle := baseStyle.Copy().Bold(true).Align(lipgloss.Center)
 
+	// Custom borders for table continuity
+	hTimeBorder := lipgloss.NormalBorder()
+	hTimeBorder.TopRight = "┬"
+	hTimeBorder.BottomLeft = "├"
+	hTimeBorder.BottomRight = "┼"
+
+	hTaskBorder := lipgloss.NormalBorder()
+	hTaskBorder.TopLeft = "─"
+	hTaskBorder.BottomLeft = "─"
+	hTaskBorder.BottomRight = "┤"
+
+	// If no tasks, close the table
+	if len(tasks) == 0 {
+		hTimeBorder.BottomLeft = "└"
+		hTimeBorder.BottomRight = "┴"
+		hTaskBorder.BottomRight = "┘"
+	}
+
 	// Build Header
 	// Time: Top, Right, Bottom, Left borders
 	// Task: Top, Right, Bottom borders (Left shared)
 	header := lipgloss.JoinHorizontal(lipgloss.Top,
 		headerStyle.Copy().Width(timeColWidth).
-			Border(lipgloss.NormalBorder(), true, true, true, true).
+			Border(hTimeBorder, true, true, true, true).
 			BorderForeground(borderColor).
 			Render("Time"),
 		headerStyle.Copy().Width(taskColWidth).
-			Border(lipgloss.NormalBorder(), true, true, true, false).
+			Border(hTaskBorder, true, true, true, false).
 			BorderForeground(borderColor).
 			Render("Task"),
 	)
@@ -200,15 +218,32 @@ func (m *model) refreshTable() {
 			rowStyle = rowStyle.Foreground(taskHighlightForeground).Background(taskHighlightBackground)
 		}
 
+		// Determine border style
+		timeBorder := lipgloss.NormalBorder()
+		taskBorder := lipgloss.NormalBorder()
+
+		if i == len(tasks)-1 {
+			// Last row
+			timeBorder.BottomRight = "┴"
+			taskBorder.BottomLeft = "─"
+			// BottomLeft/BottomRight already └/┘
+		} else {
+			// Middle row
+			timeBorder.BottomLeft = "├"
+			timeBorder.BottomRight = "┼"
+			taskBorder.BottomLeft = "─"
+			taskBorder.BottomRight = "┤"
+		}
+
 		// Time Cell: Bottom, Right, Left borders
 		tStyle := rowStyle.Copy().Width(timeColWidth).
-			Border(lipgloss.NormalBorder(), false, true, true, true).
+			Border(timeBorder, false, true, true, true).
 			BorderForeground(borderColor).
 			BorderBottomForeground(bottomBorderColor)
 
 		// Task Cell: Bottom, Right borders
 		tskStyle := rowStyle.Copy().Width(taskColWidth).
-			Border(lipgloss.NormalBorder(), false, true, true, false).
+			Border(taskBorder, false, true, true, false).
 			BorderForeground(borderColor).
 			BorderBottomForeground(bottomBorderColor)
 
