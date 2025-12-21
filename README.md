@@ -54,3 +54,5 @@ tasks = [
 Start,End,Mon,Tue,Wed,Thu,Fri,Sat,Sun
 09:00,10:00,Math,History,Math,History,Math,,
 ```
+
+Note: Tasks named `/` are ignored and treated as empty time slots.

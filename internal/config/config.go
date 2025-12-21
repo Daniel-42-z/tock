@@ -154,7 +154,8 @@ func LoadCSV(path string, dateFormat string) (*Config, error) {
 				continue
 			}
 			name := strings.TrimSpace(record[colIdx])
-			if name != "" {
+			// Ignore empty strings and "/" (placeholder for empty slot)
+			if name != "" && name != "/" {
 				task := Task{
 					Name:  name,
 					Start: start,
@@ -271,6 +272,8 @@ func FindOrCreateDefault() (string, error) {
 #
 # The CSV file should have a header like:
 # Start,End,Mon,Tue,Wed,Thu,Fri,Sat,Sun
+#
+# Tasks named "/" will be ignored and treated as empty time slots.
 csv_path = "sample.csv"
 
 
