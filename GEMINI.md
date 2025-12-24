@@ -1,3 +1,5 @@
 - Build the project in the `build/` directory
 - Every time the config format changes, update the `sample_config.toml` file to reflect the change
 - Don't try to directly run `tock show` since it requires an interactive terminal to start correctly
+- Read `OUTLINE.md` to understand the project structure
+- Update `OUTLINE.md` when changing the project structure, maintaining the existing format and explaining the logic
