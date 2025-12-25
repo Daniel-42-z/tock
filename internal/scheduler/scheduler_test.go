@@ -3,7 +3,7 @@ package scheduler
 import (
 	"testing"
 	"time"
-	"tock/internal/config"
+	"sked/internal/config"
 )
 
 func TestGetCurrentTask(t *testing.T) {

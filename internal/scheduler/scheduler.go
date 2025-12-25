@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"time"
-	"tock/internal/config"
+	"sked/internal/config"
 )
 
 // Scheduler handles task lookups based on the configuration.

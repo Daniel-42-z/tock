@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"tock/internal/config"
-	"tock/internal/notifier"
-	"tock/internal/output"
-	"tock/internal/scheduler"
+	"sked/internal/config"
+	"sked/internal/notifier"
+	"sked/internal/output"
+	"sked/internal/scheduler"
 
 	"github.com/spf13/cobra"
 )
@@ -28,14 +28,14 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "tock",
-	Short: "A CLI timetable tool",
-	Long:  `tock reads your timetable configuration and tells you what you should be doing.`,
+	Use:   "sked",
+	Short: "A schedule manager",
+	Long:  `sked reads your timetable configuration and tells you what you should be doing.`,
 	RunE:  run,
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $XDG_CONFIG_HOME/tock/config.toml)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $XDG_CONFIG_HOME/sked/config.toml)")
 	rootCmd.PersistentFlags().StringVar(&tmpFile, "tmp", "", "temporary csv config file (only for today's tasks)")
 	rootCmd.Flags().BoolVarP(&jsonFmt, "json", "j", false, "output in JSON format")
 	rootCmd.Flags().BoolVar(&jsonAll, "all", false, "include all tasks for today in JSON output (only with --json)")

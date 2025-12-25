@@ -1,6 +1,6 @@
-# Tock
+# Sked
 
-Tock is a CLI tool that helps you keep track of your schedule. It reads your timetable from a TOML or CSV configuration and tells you what you should be doing right now or what's coming up next.
+Sked is a CLI tool that helps you keep track of your schedule. It reads your timetable from a TOML or CSV configuration and tells you what you should be doing right now or what's coming up next.
 
 ## Features
 
@@ -15,22 +15,22 @@ Tock is a CLI tool that helps you keep track of your schedule. It reads your tim
 ```bash
 # Build from source
 mkdir -p build
-go build -o build/tock cmd/tock/main.go
+go build -o build/sked ./cmd/sked
 
 # Install to system (example)
-sudo cp build/tock /usr/local/bin/
+sudo cp build/sked /usr/local/bin/
 ```
 
 ## Usage
 
 ```bash
-tock                  # Show current task
-tock --next           # Show next task
-tock --time           # Include time range
-tock --json           # Output as JSON
-tock --watch          # Run in continuous mode
-tock --watch --notify-ahead 5m # Notify 5m before tasks (requires --watch), will still show task info in output based on the other flags
-tock --config my.toml # Use specific config file
+sked                  # Show current task
+sked --next           # Show next task
+sked --time           # Include time range
+sked --json           # Output as JSON
+sked --watch          # Run in continuous mode
+sked --watch --notify-ahead 5m # Notify 5m before tasks (requires --watch), will still show task info in output based on the other flags
+sked --config my.toml # Use specific config file
 ```
 
 ## Configuration

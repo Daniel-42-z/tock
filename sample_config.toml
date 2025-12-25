@@ -1,9 +1,9 @@
-# Path to a CSV file for tasks. If set, Tock ignores native TOML schedule.
+# Path to a CSV file for tasks. If set, Sked ignores native TOML schedule.
 # Can be absolute or relative to this config file. '~' expands to home directory.
 # csv_path = "~/Documents/timetables/weekly_schedule.csv"
 
 # Optional: Configure a temporary/override CSV file.
-# This file is used when running 'tock show tmp'.
+# This file is used when running 'sked show tmp'.
 # It uses the "temporary" CSV format (Start, End, Task columns).
 # tmp_csv_path = "tmp.csv"
 

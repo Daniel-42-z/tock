@@ -9,7 +9,7 @@ import (
 func TestLoadTOML_TildeExpansion(t *testing.T) {
 	// --- Setup ---
 	// Create a dummy CSV file in a temporary directory
-	tmpDir, err := os.MkdirTemp("", "tock_test")
+	tmpDir, err := os.MkdirTemp("", "sked_test")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}

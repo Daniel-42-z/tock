@@ -1,7 +1,7 @@
-# Tock Project Outline
+# Sked Project Outline
 
 ## Overview
-Tock is a CLI-based timetable management tool designed to help users track their daily schedules. It supports both standard weekly schedules and custom cycle-based schedules (e.g., 6-day school cycles). It features a "watch" mode for status bar integration, desktop notifications, and an interactive Terminal User Interface (TUI).
+Sked is a CLI-based timetable management tool designed to help users track their daily schedules. It supports both standard weekly schedules and custom cycle-based schedules (e.g., 6-day school cycles). It features a "watch" mode for status bar integration, desktop notifications, and an interactive Terminal User Interface (TUI).
 
 ## Project Structure
 
@@ -12,8 +12,8 @@ Tock is a CLI-based timetable management tool designed to help users track their
 
 ### `cmd/`
 Entry points for the application.
-- `cmd/tock/main.go`: The main CLI entry point. Handles flag parsing, configuration loading, and command routing (e.g., `run`, `runWatch`).
-- `cmd/tock/tui.go`: Implementation of the interactive TUI command (`tock show`) using the Bubble Tea framework. Supports `tock show tmp` to view a temporary schedule defined in config.
+- `cmd/sked/main.go`: The main CLI entry point. Handles flag parsing, configuration loading, and command routing (e.g., `run`, `runWatch`).
+- `cmd/sked/tui.go`: Implementation of the interactive TUI command (`sked show`) using the Bubble Tea framework. Supports `sked show tmp` to view a temporary schedule defined in config.
 
 ### `internal/`
 Core application logic, separated by domain.

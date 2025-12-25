@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"tock/internal/scheduler"
+	"sked/internal/scheduler"
 )
 
 // Print displays the task information.

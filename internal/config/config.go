@@ -341,8 +341,8 @@ func FindOrCreateDefault() (string, error) {
 		return "", fmt.Errorf("could not find user config directory: %w", err)
 	}
 
-	tockCfgDir := filepath.Join(cfgDir, "tock")
-	configPath := filepath.Join(tockCfgDir, "config.toml")
+	skedCfgDir := filepath.Join(cfgDir, "sked")
+	configPath := filepath.Join(skedCfgDir, "config.toml")
 
 	// Check if the config file already exists
 	if _, err := os.Stat(configPath); err == nil {
@@ -353,14 +353,14 @@ func FindOrCreateDefault() (string, error) {
 	fmt.Fprintf(os.Stderr, "No config file found. Creating a self-documenting default at %s\n", configPath)
 
 	// Create the directory
-	if err := os.MkdirAll(tockCfgDir, 0755); err != nil {
+	if err := os.MkdirAll(skedCfgDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create config directory: %w", err)
 	}
 
 	// Create the default, self-documenting config.toml
-	tomlContent := `# Welcome to Tock! This is your main configuration file.
+	tomlContent := `# Welcome to Sked! This is your main configuration file.
 #
-# Tock can read your schedule in two ways:
+# Sked can read your schedule in two ways:
 #  1. From a simple CSV file (e.g., for a standard weekly schedule).
 #  2. Directly from this TOML file (e.g., for complex, multi-day cycles).
 
@@ -377,7 +377,7 @@ func FindOrCreateDefault() (string, error) {
 csv_path = "sample.csv"
 
 # Optional: Configure a temporary/override CSV file.
-# This file is used when running 'tock show tmp'.
+# This file is used when running 'sked show tmp'.
 # It uses the "temporary" CSV format (Start, End, Task columns).
 # tmp_csv_path = "tmp.csv"
 
@@ -423,7 +423,7 @@ csv_path = "sample.csv"
 	}
 
 	// Create the default sample.csv
-	csvPath := filepath.Join(tockCfgDir, "sample.csv")
+	csvPath := filepath.Join(skedCfgDir, "sample.csv")
 	csvContent := `Start,End,Mon,Tue,Wed,Thu,Fri,Sat,Sun
 09:00,09:50,Math,History,Math,History,Math,,
 10:04,11:00,History,Math,History,Math,History,,

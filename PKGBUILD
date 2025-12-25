@@ -1,11 +1,11 @@
 # Maintainer: Your Name <your.email@example.com>
-pkgname='tock'
-_pkgname='tock'
+pkgname='sked'
+_pkgname='sked'
 pkgver='0.1.0'
 pkgrel=1
 pkgdesc="A CLI tool to keep track of your schedule from a TOML or CSV config."
 arch=('x86_64') # You can add 'aarch64' if you build for ARM as well
-url="https://github.com/Daniel-42-z/tock"
+url="https://github.com/Daniel-42-z/sked"
 license=('MIT')
 
 # Dependencies required at runtime (if any, usually none for a Go binary)
@@ -16,7 +16,7 @@ makedepends=('go')
 
 # Source files for the package. Use 'git+' for building directly from a git repo.
 # For tagged releases, you might use 'git+https://...#tag=v${pkgver}'
-# or a direct tarball download 'https://github.com/your-username/tock/archive/v${pkgver}.tar.gz'
+# or a direct tarball download 'https://github.com/your-username/sked/archive/v${pkgver}.tar.gz'
 source=("${_pkgname}::git+${url}.git" # This builds from the latest master/main branch
 	'sample.csv')                        # Include the sample.csv file
 
@@ -31,7 +31,7 @@ build() {
 	# Ensure the build directory exists
 	mkdir -p build
 	# Build the main executable
-	go build -o build/"${_pkgname}" ./cmd/tock
+	go build -o build/"${_pkgname}" ./cmd/sked
 }
 
 # Check function: runs tests (optional but recommended)
@@ -45,7 +45,7 @@ package() {
 	# Install the binary to /usr/bin
 	install -Dm755 "${srcdir}/${_pkgname}/build/${_pkgname}" "${pkgdir}/usr/bin/${_pkgname}"
 
-	# Install the sample config file to /usr/share/doc/tock/
+	# Install the sample config file to /usr/share/doc/sked/
 	# This makes it available for users to copy to their XDG config directory.
 	install -Dm644 "${srcdir}/sample.csv" "${pkgdir}/usr/share/doc/${_pkgname}/sample.csv"
 }
