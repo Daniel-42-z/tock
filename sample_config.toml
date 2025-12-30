@@ -40,3 +40,16 @@ tasks = [
 [[day]]
 id = 5                                                         # Friday
 tasks = [{ name = "Wrap-up", start = "16:00", end = "17:00" }]
+
+# --- Overrides ---
+# You can temporarily override a specific date to use a different schedule or mark it as off.
+#
+# Example: Treat next Wednesday as a Friday
+# [[override]]
+# date = "2025-01-01"
+# use_day_id = 5 # or use_day_id = "Fri"
+#
+# Example: Mark next Thursday as a holiday (off day)
+# [[override]]
+# date = "2025-01-02"
+# is_off = true

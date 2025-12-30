@@ -20,9 +20,10 @@ Core application logic, separated by domain.
 
 #### `internal/config/`
 Handles configuration loading and validation.
-- Supports **TOML** for complex configurations (custom cycles, anchor dates).
+- Supports **TOML** for complex configurations (custom cycles, anchor dates, overrides).
 - Supports **CSV** for simple weekly schedules.
 - Supports **Temporary CSV** override via `tmp_csv_path` in TOML.
+- Supports **Date Overrides** in TOML to map specific dates to different cycle days or mark them as off.
 - `FindOrCreateDefault()`: Automatically creates a default configuration file if none exists.
 - `Load()`: Dispatches to `LoadTOML` or `LoadCSV` based on file extension.
 
@@ -32,7 +33,7 @@ The domain logic for schedule calculations.
 - `GetCurrentTask(now)`: Returns the task active at a specific time.
 - `GetNextTask(now)`: Finds the next upcoming task.
 - `GetPreviousTask(now)`: Finds the most recently finished task.
-- `getCycleDayID(date)`: Calculates the effective day ID in the cycle (handling 7-day weeks or custom cycles relative to an anchor date).
+- `getCycleDayID(date)`: Calculates the effective day ID in the cycle (handling 7-day weeks, custom cycles relative to an anchor date, and overrides).
 
 #### `internal/notifier/`
 Cross-platform desktop notifications.

@@ -13,12 +13,24 @@ import (
 
 // Config represents the top-level configuration structure.
 type Config struct {
-	CycleDays  int    `toml:"cycle_days"`
-	AnchorDate string `toml:"anchor_date"`
-	CSVPath    string `toml:"csv_path"`
-	TmpCSVPath string `toml:"tmp_csv_path"`
-	DateFormat string `toml:"date_format"`
-	Days       []Day  `toml:"day"`
+	CycleDays  int        `toml:"cycle_days"`
+	AnchorDate string     `toml:"anchor_date"`
+	CSVPath    string     `toml:"csv_path"`
+	TmpCSVPath string     `toml:"tmp_csv_path"`
+	DateFormat string     `toml:"date_format"`
+	Days       []Day      `toml:"day"`
+	Overrides  []Override `toml:"override"`
+}
+
+// Override represents a temporary schedule change for a specific date.
+type Override struct {
+	DateStr     string      `toml:"date"`
+	IsOff       bool        `toml:"is_off"`
+	UseDayIDRaw interface{} `toml:"use_day_id"`
+
+	// Internal fields populated during validation
+	Date     time.Time `toml:"-"`
+	UseDayID int       `toml:"-"`
 }
 
 // Day represents a single day's schedule in the cycle.
@@ -88,16 +100,24 @@ func LoadTOML(path string) (*Config, error) {
 		if !filepath.IsAbs(csvPath) {
 			csvPath = filepath.Join(filepath.Dir(path), csvPath)
 		}
-		
+
 		csvCfg, err := LoadCSV(csvPath, cfg.DateFormat)
 		if err != nil {
 			return nil, err
 		}
-		// Preserve TmpCSVPath from TOML
+		// Preserve settings from TOML
 		csvCfg.TmpCSVPath = cfg.TmpCSVPath
+		csvCfg.Overrides = cfg.Overrides
+
+		if err := csvCfg.ProcessOverrides(); err != nil {
+			return nil, err
+		}
 		return csvCfg, nil
 	}
 
+	if err := cfg.ProcessOverrides(); err != nil {
+		return nil, err
+	}
 	return &cfg, nil
 }
 
@@ -128,7 +148,8 @@ func LoadCSV(path string, dateFormat string) (*Config, error) {
 	}
 
 	// Map column index to day ID
-	colToDay := make(map[int]int)
+
+colToDay := make(map[int]int)
 	startCol := -1
 	endCol := -1
 
@@ -152,11 +173,12 @@ func LoadCSV(path string, dateFormat string) (*Config, error) {
 	}
 
 	cfg := &Config{
-		CycleDays: 7,
-		Days:      make([]Day, 0),
+		CycleDays:  7,
+		Days:       make([]Day, 0),
 		DateFormat: dateFormat,
 	}
-	dayMap := make(map[int][]Task)
+
+dayMap := make(map[int][]Task)
 
 	for _, record := range records[1:] {
 		if len(record) <= startCol || len(record) <= endCol {
@@ -181,7 +203,7 @@ func LoadCSV(path string, dateFormat string) (*Config, error) {
 					Start: start,
 					End:   end,
 				}
-				dayMap[dayID] = append(dayMap[dayID], task)
+			dayMap[dayID] = append(dayMap[dayID], task)
 			}
 		}
 	}
@@ -279,6 +301,49 @@ func LoadTmpCSV(path string) (*Config, error) {
 	return cfg, nil
 }
 
+// ProcessOverrides parses raw override data into usable structs.
+func (c *Config) ProcessOverrides() error {
+	for i := range c.Overrides {
+		o := &c.Overrides[i]
+
+		// Parse Date
+		if o.DateStr == "" {
+			return fmt.Errorf("override missing date")
+		}
+		t, err := time.Parse("2006-01-02", o.DateStr)
+		if err != nil {
+			return fmt.Errorf("invalid override date '%s': %w", o.DateStr, err)
+		}
+		o.Date = t
+
+		// If IsOff is true, we don't need UseDayID
+		if o.IsOff {
+			continue
+		}
+
+		// Parse UseDayIDRaw
+		if o.UseDayIDRaw == nil {
+			return fmt.Errorf("override for %s must have either is_off=true or use_day_id", o.DateStr)
+		}
+
+		switch v := o.UseDayIDRaw.(type) {
+		case int64:
+			o.UseDayID = int(v)
+		case float64:
+			o.UseDayID = int(v)
+		case string:
+			id, err := parseDayName(v)
+			if err != nil {
+				return fmt.Errorf("override for %s has invalid day name '%s': %w", o.DateStr, v, err)
+			}
+			o.UseDayID = id
+		default:
+			return fmt.Errorf("override for %s has invalid type for use_day_id: %T", o.DateStr, v)
+		}
+	}
+	return nil
+}
+
 // expandTilde expands the '~' prefix in a path to the user's home directory.
 func expandTilde(path string) (string, error) {
 	if !strings.HasPrefix(path, "~") {
@@ -296,25 +361,31 @@ func expandTilde(path string) (string, error) {
 // parseDayName converts a day name (e.g., "Monday") to a cycle ID (0-6).
 // Assumes 0=Sunday, 1=Monday, ..., 6=Saturday to match time.Weekday().
 func parseDayName(name string) (int, error) {
-	name = strings.ToLower(name)
-	switch name {
-	case "sunday", "sun":
+	name = strings.ToLower(strings.TrimSpace(name))
+	// Prefix matching to allow "mon", "tue", etc.
+	if strings.HasPrefix(name, "sun") {
 		return 0, nil
-	case "monday", "mon":
-		return 1, nil
-	case "tuesday", "tue":
-		return 2, nil
-	case "wednesday", "wed":
-		return 3, nil
-	case "thursday", "thu":
-		return 4, nil
-	case "friday", "fri":
-		return 5, nil
-	case "saturday", "sat":
-		return 6, nil
-	default:
-		return -1, fmt.Errorf("invalid day name: %s", name)
 	}
+	if strings.HasPrefix(name, "mon") {
+		return 1, nil
+	}
+	if strings.HasPrefix(name, "tue") {
+		return 2, nil
+	}
+	if strings.HasPrefix(name, "wed") {
+		return 3, nil
+	}
+	if strings.HasPrefix(name, "thu") {
+		return 4, nil
+	}
+	if strings.HasPrefix(name, "fri") {
+		return 5, nil
+	}
+	if strings.HasPrefix(name, "sat") {
+		return 6, nil
+	}
+
+	return -1, fmt.Errorf("invalid day name: %s", name)
 }
 
 // Validate checks if the configuration is valid.
@@ -419,6 +490,19 @@ csv_path = "sample.csv"
 #     { name = "Client Meeting", start = "11:00", end = "12:30" },
 #     { name = "Code Review",    start = "15:00", end = "16:00" },
 #   ]
+
+# --- Overrides ---
+# You can temporarily override a specific date to use a different schedule or mark it as off.
+#
+# Example: Treat next Wednesday as a Friday
+# [[override]]
+# date = "2025-01-01"
+# use_day_id = 5 # or use_day_id = "Fri"
+#
+# Example: Mark next Thursday as a holiday (off day)
+# [[override]]
+# date = "2025-01-02"
+# is_off = true
 `
 	if err := os.WriteFile(configPath, []byte(tomlContent), 0644); err != nil {
 		return "", fmt.Errorf("failed to write default config.toml: %w", err)

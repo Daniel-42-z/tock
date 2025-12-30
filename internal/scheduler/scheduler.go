@@ -3,8 +3,8 @@ package scheduler
 import (
 	"fmt"
 	"sort"
-	"time"
 	"sked/internal/config"
+	"time"
 )
 
 // Scheduler handles task lookups based on the configuration.
@@ -31,6 +31,7 @@ func (s *Scheduler) GetCurrentTask(now time.Time) (*TaskEvent, error) {
 		return nil, err
 	}
 
+	// If dayID is -1 (Off day), getTasksForDay returns nil/empty, loop doesn't run, returns nil.
 	tasks := s.getTasksForDay(dayID)
 	for _, t := range tasks {
 		start, end, err := s.parseTaskTimes(now, t)
@@ -75,9 +76,6 @@ func (s *Scheduler) GetNextTask(now time.Time) (*TaskEvent, error) {
 		tasks := s.getTasksForDay(dayID)
 
 		// Sort tasks by start time to ensure we find the earliest one
-		// This is inefficient to do every time but safe. Optimization can come later.
-		// Actually, config order isn't guaranteed, so we MUST sort or iterate carefully.
-		// Let's parse all valid tasks for the day first.
 		var dayEvents []TaskEvent
 		for _, t := range tasks {
 			start, end, err := s.parseTaskTimes(checkDate, t)
@@ -187,7 +185,23 @@ func (s *Scheduler) GetPreviousTask(now time.Time) (*TaskEvent, error) {
 }
 
 // getCycleDayID calculates the 0-indexed day ID in the cycle for a given date.
+// It respects overrides defined in the configuration.
 func (s *Scheduler) getCycleDayID(date time.Time) (int, error) {
+	// 1. Check for Overrides
+	// Normalize date to YYYY-MM-DD for comparison
+	y, m, d := date.Date()
+	
+	for _, o := range s.cfg.Overrides {
+		oy, om, od := o.Date.Date()
+		if oy == y && om == m && od == d {
+			if o.IsOff {
+				return -1, nil // -1 indicates OFF day
+			}
+			return o.UseDayID, nil
+		}
+	}
+
+	// 2. Standard Calculation
 	// If standard 7-day cycle and no anchor, use weekday
 	if s.cfg.CycleDays == 7 && s.cfg.AnchorDate == "" {
 		// time.Weekday: Sunday=0, ... Saturday=6
@@ -205,9 +219,7 @@ func (s *Scheduler) getCycleDayID(date time.Time) (int, error) {
 
 	// Normalize to midnight to calculate day difference
 	d1 := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
-	// Ideally anchor is just a date. Let's assume user local time for simplicity of "days".
-	// But time.Parse returns UTC if no timezone info.
-	// Let's force anchor to be midnight in the requested timezone (date.Location)
+	// Anchor must be relative to the same timezone location to get correct day diff
 	anchorInLoc := time.Date(anchor.Year(), anchor.Month(), anchor.Day(), 0, 0, 0, 0, date.Location())
 
 	diff := int(d1.Sub(anchorInLoc).Hours() / 24)
@@ -221,6 +233,10 @@ func (s *Scheduler) getCycleDayID(date time.Time) (int, error) {
 }
 
 func (s *Scheduler) getTasksForDay(dayID int) []config.Task {
+	// If dayID is -1 (Off day), return nil
+	if dayID == -1 {
+		return nil
+	}
 	for _, d := range s.cfg.Days {
 		if d.ID == dayID {
 			return d.Tasks

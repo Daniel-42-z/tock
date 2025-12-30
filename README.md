@@ -46,6 +46,21 @@ id = 1 # Monday (if 7-day cycle)
 tasks = [
   { name = "Math", start = "09:00", end = "10:00" }
 ]
+
+### Overrides
+
+You can temporarily override a specific date's schedule.
+
+```toml
+# Treat a specific date as another day (e.g., make Jan 3rd a Monday)
+[[override]]
+date = "2024-01-03"
+use_day_id = 1
+
+# Mark a specific date as an OFF day (no tasks)
+[[override]]
+date = "2024-01-02"
+is_off = true
 ```
 
 ### CSV (Simple weekly schedule)
