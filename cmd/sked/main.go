@@ -25,6 +25,11 @@ var (
 	noTaskText  string
 	lookahead   time.Duration
 	notifyAhead time.Duration
+
+	// Build information
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
 
 var rootCmd = &cobra.Command{
@@ -46,7 +51,18 @@ func init() {
 	rootCmd.Flags().DurationVarP(&lookahead, "lookahead", "l", 0, "lookahead duration for watch mode (affects output time)")
 	rootCmd.Flags().DurationVar(&notifyAhead, "notify-ahead", 0, "enable notifications with this lookahead duration (use 0s for immediate)")
 
+	// Add version command
+	rootCmd.AddCommand(versionCmd)
+
 	rootCmd.MarkFlagsMutuallyExclusive("config", "tmp")
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version number of sked",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("sked %s\ncommit: %s\nbuilt at: %s\n", version, commit, date)
+	},
 }
 
 func main() {
