@@ -25,11 +25,13 @@ type Config struct {
 // Override represents a temporary schedule change for a specific date.
 type Override struct {
 	DateStr     string      `toml:"date"`
+	EndDateStr  string      `toml:"end_date"`
 	IsOff       bool        `toml:"is_off"`
 	UseDayIDRaw interface{} `toml:"use_day_id"`
 
 	// Internal fields populated during validation
 	Date     time.Time `toml:"-"`
+	EndDate  time.Time `toml:"-"`
 	UseDayID int       `toml:"-"`
 }
 
@@ -316,6 +318,20 @@ func (c *Config) ProcessOverrides() error {
 		}
 		o.Date = t
 
+		// Parse EndDate
+		if o.EndDateStr != "" {
+			et, err := time.Parse("2006-01-02", o.EndDateStr)
+			if err != nil {
+				return fmt.Errorf("invalid override end_date '%s': %w", o.EndDateStr, err)
+			}
+			if et.Before(t) {
+				return fmt.Errorf("override end_date '%s' cannot be before date '%s'", o.EndDateStr, o.DateStr)
+			}
+			o.EndDate = et
+		} else {
+			o.EndDate = t
+		}
+
 		// If IsOff is true, we don't need UseDayID
 		if o.IsOff {
 			continue
@@ -502,6 +518,12 @@ csv_path = "sample.csv"
 # Example: Mark next Thursday as a holiday (off day)
 # [[override]]
 # date = "2025-01-02"
+# is_off = true
+#
+# Example: Mark a range of dates as holidays (e.g., vacation)
+# [[override]]
+# date = "2025-01-20"
+# end_date = "2025-01-24"
 # is_off = true
 `
 	if err := os.WriteFile(configPath, []byte(tomlContent), 0644); err != nil {

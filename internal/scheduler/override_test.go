@@ -35,12 +35,14 @@ func TestOverrides(t *testing.T) {
 				DateStr: "2024-01-02",
 				IsOff:   true,
 				Date:    time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+				EndDate: time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
 			},
 			{
 				// Wednesday Jan 3, 2024 -> Use Mon (ID 1)
 				DateStr:  "2024-01-03",
 				UseDayID: 1,
 				Date:     time.Date(2024, 1, 3, 0, 0, 0, 0, time.UTC),
+				EndDate:  time.Date(2024, 1, 3, 0, 0, 0, 0, time.UTC),
 			},
 		},
 	}
@@ -96,5 +98,61 @@ func TestOverrides(t *testing.T) {
 	}
 	if nextTask.Name != "Task A" {
 		t.Errorf("Expected next task to be Task A, got %s", nextTask.Name)
+	}
+}
+
+func TestRangeOverrides(t *testing.T) {
+	// Setup:
+	// Cycle: 7 days
+	// Mon (1): Task A
+	// ...
+
+	monTasks := []config.Task{{Name: "Task A", Start: "09:00", End: "10:00"}}
+
+	cfg := &config.Config{
+		CycleDays: 7,
+		Days: []config.Day{
+			{ID: 1, Tasks: monTasks}, // Mon
+			{ID: 2, Tasks: monTasks}, // Tue
+			{ID: 3, Tasks: monTasks}, // Wed
+		},
+		Overrides: []config.Override{
+			{
+				// Range: Mon Jan 1 to Wed Jan 3 -> OFF
+				DateStr:    "2024-01-01",
+				EndDateStr: "2024-01-03",
+				IsOff:      true,
+				// Manually populate internal fields as we bypass config.Load
+				Date:    time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				EndDate: time.Date(2024, 1, 3, 0, 0, 0, 0, time.UTC),
+			},
+		},
+	}
+
+	sched := New(cfg)
+
+	// Check dates in range (Mon Jan 1, Tue Jan 2, Wed Jan 3)
+	// Jan 1 2024 is Monday.
+	for i := 1; i <= 3; i++ {
+		date := time.Date(2024, 1, i, 9, 30, 0, 0, time.UTC)
+		task, err := sched.GetCurrentTask(date)
+		if err != nil {
+			t.Fatalf("Day %d error: %v", i, err)
+		}
+		if task != nil {
+			t.Errorf("Expected no task on off-range day Jan %d, got %v", i, task)
+		}
+	}
+
+	// Check date outside range (Thu Jan 4) - Day ID 4 (Thu) has no tasks defined, so nil is expected anyway.
+	
+	// Check Jan 8 (Next Monday). Should work.
+	nextMon := time.Date(2024, 1, 8, 9, 30, 0, 0, time.UTC)
+	task, err := sched.GetCurrentTask(nextMon)
+	if err != nil {
+		t.Fatalf("Next Monday error: %v", err)
+	}
+	if task == nil || task.Name != "Task A" {
+		t.Errorf("Expected Task A on next Monday, got %v", task)
 	}
 }

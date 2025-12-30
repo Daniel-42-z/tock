@@ -23,7 +23,7 @@ Handles configuration loading and validation.
 - Supports **TOML** for complex configurations (custom cycles, anchor dates, overrides).
 - Supports **CSV** for simple weekly schedules.
 - Supports **Temporary CSV** override via `tmp_csv_path` in TOML.
-- Supports **Date Overrides** in TOML to map specific dates to different cycle days or mark them as off.
+- Supports **Date Overrides** in TOML to map specific dates (or ranges) to different cycle days or mark them as off.
 - `FindOrCreateDefault()`: Automatically creates a default configuration file if none exists.
 - `Load()`: Dispatches to `LoadTOML` or `LoadCSV` based on file extension.
 

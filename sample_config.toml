@@ -53,3 +53,9 @@ tasks = [{ name = "Wrap-up", start = "16:00", end = "17:00" }]
 # [[override]]
 # date = "2025-01-02"
 # is_off = true
+#
+# Example: Mark a range of dates as holidays (e.g., vacation)
+# [[override]]
+# date = "2025-01-20"
+# end_date = "2025-01-24"
+# is_off = true
