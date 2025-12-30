@@ -33,13 +33,16 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "sked",
-	Short: "A schedule manager",
-	Long:  `sked reads your timetable configuration and tells you what you should be doing.`,
-	RunE:  run,
+	Use:     "sked",
+	Short:   "A schedule manager",
+	Long:    `sked reads your timetable configuration and tells you what you should be doing.`,
+	Version: version,
+	RunE:    run,
 }
 
 func init() {
+	rootCmd.SetVersionTemplate(fmt.Sprintf("sked %s\ncommit: %s\nbuilt at: %s\n", version, commit, date))
+
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $XDG_CONFIG_HOME/sked/config.toml)")
 	rootCmd.PersistentFlags().StringVar(&tmpFile, "tmp", "", "temporary csv config file (only for today's tasks)")
 	rootCmd.Flags().BoolVarP(&jsonFmt, "json", "j", false, "output in JSON format")
@@ -51,18 +54,7 @@ func init() {
 	rootCmd.Flags().DurationVarP(&lookahead, "lookahead", "l", 0, "lookahead duration for watch mode (affects output time)")
 	rootCmd.Flags().DurationVar(&notifyAhead, "notify-ahead", 0, "enable notifications with this lookahead duration (use 0s for immediate)")
 
-	// Add version command
-	rootCmd.AddCommand(versionCmd)
-
 	rootCmd.MarkFlagsMutuallyExclusive("config", "tmp")
-}
-
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the version number of sked",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("sked %s\ncommit: %s\nbuilt at: %s\n", version, commit, date)
-	},
 }
 
 func main() {
