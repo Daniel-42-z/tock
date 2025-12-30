@@ -46,6 +46,7 @@ id = 1 # Monday (if 7-day cycle)
 tasks = [
   { name = "Math", start = "09:00", end = "10:00" }
 ]
+```
 
 ### Overrides
 
