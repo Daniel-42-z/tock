@@ -1,4 +1,4 @@
-module sked
+module github.com/Daniel-42-z/sked
 
 go 1.25.4
 

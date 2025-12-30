@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"sked/internal/config"
-	"sked/internal/notifier"
-	"sked/internal/output"
-	"sked/internal/scheduler"
+	"github.com/Daniel-42-z/sked/internal/config"
+	"github.com/Daniel-42-z/sked/internal/notifier"
+	"github.com/Daniel-42-z/sked/internal/output"
+	"github.com/Daniel-42-z/sked/internal/scheduler"
 
 	"github.com/spf13/cobra"
 )

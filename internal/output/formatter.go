@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sked/internal/scheduler"
+	"github.com/Daniel-42-z/sked/internal/scheduler"
 )
 
 // Print displays the task information.

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"sked/internal/config"
-	"sked/internal/scheduler"
+	"github.com/Daniel-42-z/sked/internal/config"
+	"github.com/Daniel-42-z/sked/internal/scheduler"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"

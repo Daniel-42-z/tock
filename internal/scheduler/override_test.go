@@ -1,7 +1,7 @@
 package scheduler
 
 import (
-	"sked/internal/config"
+	"github.com/Daniel-42-z/sked/internal/config"
 	"testing"
 	"time"
 )

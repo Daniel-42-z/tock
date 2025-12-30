@@ -13,6 +13,11 @@ Sked is a CLI tool that helps you keep track of your schedule. It reads your tim
 ## Installation
 
 ```bash
+# Install with Go (requires Go 1.25+)
+go install github.com/Daniel-42-z/sked/cmd/sked@latest
+```
+
+```bash
 # Build from source
 mkdir -p build
 go build -o build/sked ./cmd/sked
