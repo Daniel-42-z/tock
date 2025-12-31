@@ -190,11 +190,15 @@ func (s *Scheduler) getCycleDayID(date time.Time) (int, error) {
 	// 1. Check for Overrides
 	// Normalize date to YYYY-MM-DD for comparison
 	y, m, d := date.Date()
-	checkDate := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+	checkDate := time.Date(y, m, d, 0, 0, 0, 0, date.Location())
 
 	for _, o := range s.cfg.Overrides {
-		// Check if checkDate is within [o.Date, o.EndDate]
-		if (checkDate.Equal(o.Date) || checkDate.After(o.Date)) && (checkDate.Equal(o.EndDate) || checkDate.Before(o.EndDate)) {
+		// Use the same location for comparison
+		oDate := time.Date(o.Date.Year(), o.Date.Month(), o.Date.Day(), 0, 0, 0, 0, date.Location())
+		oEndDate := time.Date(o.EndDate.Year(), o.EndDate.Month(), o.EndDate.Day(), 0, 0, 0, 0, date.Location())
+
+		// Check if checkDate is within [oDate, oEndDate]
+		if (checkDate.Equal(oDate) || checkDate.After(oDate)) && (checkDate.Equal(oEndDate) || checkDate.Before(oEndDate)) {
 			if o.IsOff {
 				return -1, nil // -1 indicates OFF day
 			}

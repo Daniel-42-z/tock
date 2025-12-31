@@ -75,6 +75,7 @@ func LoadTOML(path string) (*Config, error) {
 	cfg.CycleDays = 7
 
 	dec := toml.NewDecoder(f)
+	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {
 		return nil, err
 	}
