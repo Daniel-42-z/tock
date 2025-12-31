@@ -28,6 +28,8 @@ archives:
       {{- .Version }}-
       {{- .Os }}-
       {{- .Arch }}
+    replacements:
+      darwin: macos
     format_overrides:
       - goos: windows
         format: zip
