@@ -1,3 +1,4 @@
+// Package scheduler implements the core logic for calculating task events.
 package scheduler
 
 import (

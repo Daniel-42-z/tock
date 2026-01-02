@@ -1,3 +1,4 @@
+// Package output manages the formatting and display of task information.
 package output
 
 import (

@@ -1,3 +1,4 @@
+// Package config handles loading and validating sked configurations.
 package config
 
 import (
@@ -22,7 +23,7 @@ type Config struct {
 	Overrides  []Override `toml:"override"`
 }
 
-// Used for flexible config for either number-based or word-based day of week
+// DayID is Used for flexible config for either number-based or word-based day of week
 type DayID int
 
 func (d *DayID) UnmarshalText(text []byte) error {
@@ -555,4 +556,3 @@ csv_path = "sample.csv"
 
 	return configPath, nil
 }
-

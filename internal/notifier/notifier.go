@@ -1,3 +1,4 @@
+// Package notifier provides cross-platform desktop notification support.
 package notifier
 
 import (
