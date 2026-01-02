@@ -23,6 +23,13 @@ type Config struct {
 	Overrides  []Override `toml:"override"`
 }
 
+func closeFile(f *os.File, err *error) {
+	cerr := f.Close()
+	if *err == nil {
+		*err = cerr
+	}
+}
+
 // DayID is Used for flexible config for either number-based or word-based day of week
 type DayID int
 
@@ -92,7 +99,7 @@ func LoadTOML(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer closeFile(f, &err)
 
 	var cfg Config
 	// Set defaults
@@ -156,7 +163,7 @@ func LoadCSV(path string, dateFormat string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer closeFile(f, &err)
 
 	reader := csv.NewReader(f)
 	reader.Comment = '#'
