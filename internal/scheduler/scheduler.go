@@ -202,7 +202,7 @@ func (s *Scheduler) getCycleDayID(date time.Time) (int, error) {
 			if o.IsOff {
 				return -1, nil // -1 indicates OFF day
 			}
-			return o.UseDayID, nil
+			return int(o.UseDayID), nil
 		}
 	}
 

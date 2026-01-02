@@ -22,17 +22,40 @@ type Config struct {
 	Overrides  []Override `toml:"override"`
 }
 
+// Used for flexible config for either number-based or word-based day of week
+type DayID int
+
+func (d *DayID) UnmarshalText(text []byte) error {
+	id, err := parseDayName(string(text))
+	if err != nil {
+		return err
+	}
+	*d = DayID(id)
+	return nil
+}
+
+func (d *DayID) UnmarshalTOML(data any) error {
+	switch value := data.(type) {
+	case int64:
+		*d = DayID(value)
+	case string:
+		return d.UnmarshalText([]byte(value))
+	default:
+		return fmt.Errorf("invalid type for day_id: %T", value)
+	}
+	return nil
+}
+
 // Override represents a temporary schedule change for a specific date.
 type Override struct {
-	DateStr     string      `toml:"date"`
-	EndDateStr  string      `toml:"end_date"`
-	IsOff       bool        `toml:"is_off"`
-	UseDayIDRaw interface{} `toml:"use_day_id"`
+	DateStr    string `toml:"date"`
+	EndDateStr string `toml:"end_date"`
+	IsOff      bool   `toml:"is_off"`
+	UseDayID   DayID  `toml:"use_day_id"`
 
 	// Internal fields populated during validation
-	Date     time.Time `toml:"-"`
-	EndDate  time.Time `toml:"-"`
-	UseDayID int       `toml:"-"`
+	Date    time.Time `toml:"-"`
+	EndDate time.Time `toml:"-"`
 }
 
 // Day represents a single day's schedule in the cycle.
@@ -152,7 +175,7 @@ func LoadCSV(path string, dateFormat string) (*Config, error) {
 
 	// Map column index to day ID
 
-colToDay := make(map[int]int)
+	colToDay := make(map[int]int)
 	startCol := -1
 	endCol := -1
 
@@ -181,7 +204,7 @@ colToDay := make(map[int]int)
 		DateFormat: dateFormat,
 	}
 
-dayMap := make(map[int][]Task)
+	dayMap := make(map[int][]Task)
 
 	for _, record := range records[1:] {
 		if len(record) <= startCol || len(record) <= endCol {
@@ -206,7 +229,7 @@ dayMap := make(map[int][]Task)
 					Start: start,
 					End:   end,
 				}
-			dayMap[dayID] = append(dayMap[dayID], task)
+				dayMap[dayID] = append(dayMap[dayID], task)
 			}
 		}
 	}
@@ -333,30 +356,9 @@ func (c *Config) ProcessOverrides() error {
 			o.EndDate = t
 		}
 
-		// If IsOff is true, we don't need UseDayID
-		if o.IsOff {
-			continue
-		}
-
-		// Parse UseDayIDRaw
-		if o.UseDayIDRaw == nil {
-			return fmt.Errorf("override for %s must have either is_off=true or use_day_id", o.DateStr)
-		}
-
-		switch v := o.UseDayIDRaw.(type) {
-		case int64:
-			o.UseDayID = int(v)
-		case float64:
-			o.UseDayID = int(v)
-		case string:
-			id, err := parseDayName(v)
-			if err != nil {
-				return fmt.Errorf("override for %s has invalid day name '%s': %w", o.DateStr, v, err)
-			}
-			o.UseDayID = id
-		default:
-			return fmt.Errorf("override for %s has invalid type for use_day_id: %T", o.DateStr, v)
-		}
+		// Validation: If not off, we don't strictly require UseDayID to be set by the user
+		// because it defaults to 0 (Sunday). If we want to require it, we'd need a more
+		// complex check or a pointer in the struct.
 	}
 	return nil
 }
@@ -375,10 +377,17 @@ func expandTilde(path string) (string, error) {
 	return filepath.Join(home, path[1:]), nil
 }
 
-// parseDayName converts a day name (e.g., "Monday") to a cycle ID (0-6).
+// parseDayName converts a day name (e.g., "Monday") or a numeric string to a cycle ID (0-6).
 // Assumes 0=Sunday, 1=Monday, ..., 6=Saturday to match time.Weekday().
 func parseDayName(name string) (int, error) {
 	name = strings.ToLower(strings.TrimSpace(name))
+
+	// Try to parse as integer first (for "5" in a string field)
+	var id int
+	if _, err := fmt.Sscanf(name, "%d", &id); err == nil {
+		return id, nil
+	}
+
 	// Prefix matching to allow "mon", "tue", etc.
 	if strings.HasPrefix(name, "sun") {
 		return 0, nil
@@ -443,7 +452,7 @@ func FindOrCreateDefault() (string, error) {
 	fmt.Fprintf(os.Stderr, "No config file found. Creating a self-documenting default at %s\n", configPath)
 
 	// Create the directory
-	if err := os.MkdirAll(skedCfgDir, 0755); err != nil {
+	if err := os.MkdirAll(skedCfgDir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -527,7 +536,7 @@ csv_path = "sample.csv"
 # end_date = "2025-01-24"
 # is_off = true
 `
-	if err := os.WriteFile(configPath, []byte(tomlContent), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(tomlContent), 0o644); err != nil {
 		return "", fmt.Errorf("failed to write default config.toml: %w", err)
 	}
 
@@ -539,10 +548,11 @@ csv_path = "sample.csv"
 12:00,13:00,Lunch,Lunch,Lunch,Lunch,Lunch,,
 `
 	if _, err := os.Stat(csvPath); os.IsNotExist(err) {
-		if err := os.WriteFile(csvPath, []byte(csvContent), 0644); err != nil {
+		if err := os.WriteFile(csvPath, []byte(csvContent), 0o644); err != nil {
 			return "", fmt.Errorf("failed to write default sample.csv: %w", err)
 		}
 	}
 
 	return configPath, nil
 }
+

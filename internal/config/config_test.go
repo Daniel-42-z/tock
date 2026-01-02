@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/pelletier/go-toml/v2"
 )
 
 func TestLoadTOML_TildeExpansion(t *testing.T) {
@@ -59,6 +61,52 @@ func TestLoadTOML_TildeExpansion(t *testing.T) {
 	}
 	if cfg.Days[0].Tasks[0].Name != "Test Task" {
 		t.Errorf("Expected task name 'Test Task', got '%s'", cfg.Days[0].Tasks[0].Name)
+	}
+}
+
+func TestDayID_UnmarshalTOML(t *testing.T) {
+	tests := []struct {
+		name    string
+		toml    string
+		want    DayID
+		wantErr bool
+	}{
+		{
+			name: "integer",
+			toml: `use_day_id = 5`,
+			want: 5,
+		},
+		{
+			name: "string_full",
+			toml: `use_day_id = "Friday"`,
+			want: 5,
+		},
+		{
+			name: "string_short",
+			toml: `use_day_id = "mon"`,
+			want: 1,
+		},
+		{
+			name:    "invalid_type",
+			toml:    `use_day_id = true`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var res struct {
+				UseDayID DayID `toml:"use_day_id"`
+			}
+			err := toml.Unmarshal([]byte(tt.toml), &res)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Unmarshal error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && res.UseDayID != tt.want {
+				t.Errorf("Got DayID %d, want %d", res.UseDayID, tt.want)
+			}
+		})
 	}
 }
 
