@@ -77,3 +77,9 @@ Start,End,Mon,Tue,Wed,Thu,Fri,Sat,Sun
 ```
 
 Note: Tasks named `/` are ignored and treated as empty time slots.
+
+## Future plans
+
+- [ ] Consistent code styling and good habit
+- [ ] Config live reloading for watch mode
+- [ ] Display multiple timetables in one window in TUI
